@@ -1,0 +1,17 @@
+! CONTEXT:
+	/protocol/
+		&<http://if.fault.io/project/information>
+
+/identifier/
+	&<http://fault.io/engineering/workspaces>
+/icon/
+	- (emoji)`⚗️`
+/name/
+	`workspaces`
+/abstract/
+	Workspace context management and development execution controls.
+
+/authority/
+	`fault.io`
+/contact/
+	&<http://fault.io/critical>
