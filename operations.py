@@ -12,7 +12,7 @@ from fault.context import tools
 from fault.system import execution
 from fault.system import query
 from fault.system import files
-from fault.project import root
+from fault.project import system as lsf
 
 from .system import Environment
 
@@ -25,7 +25,7 @@ def system(command, argv, name=None):
 
 def srcindex(wkenv, factors):
 	for afpath in factors:
-		pd, pj, fpath = wkenv.work_project_context.split(root.types.factor@afpath)
+		pd, pj, fpath = wkenv.work_project_context.split(lsf.types.factor@afpath)
 		for (fp, ft), (fy, fs) in pj.select(fpath.container):
 			if fp == fpath or fp.segment(fpath):
 				yield from fs
@@ -148,7 +148,7 @@ def build(wkenv:Environment, intentions, argv=[], rebuild=0):
 
 	explicit = None
 	if argv and argv[0] != '.':
-		fpath = root.types.factor@argv[0]
+		fpath = lsf.types.factor@argv[0]
 		try:
 			explicit = [wkenv.work_project_context.split(fpath)[1].identifier]
 		except LookupError:
@@ -214,7 +214,7 @@ def check_keywords(keywords, name, Table=str.maketrans('_.-', '   ')):
 	# False, normally. True when all the keywords were whitespace.
 	return len(keywords) == empty_constraints
 
-def plan_test(wkenv:Environment, intention:str, argv, pcontext:root.Context, identifier):
+def plan_test(wkenv:Environment, intention:str, argv, pcontext:lsf.Context, identifier):
 	"""
 	# Create an invocation for processing the project from &pcontext selected using &identifier.
 	"""
@@ -231,7 +231,7 @@ def plan_test(wkenv:Environment, intention:str, argv, pcontext:root.Context, ide
 	else:
 		kwcheck = (lambda x: True) # Always true if unconstrainted
 
-	for (fp, ft), fd in pj.select(root.types.factor@'test'):
+	for (fp, ft), fd in pj.select(lsf.types.factor@'test'):
 		if not fp.identifier.startswith('test_') or not kwcheck(fp):
 			continue
 
@@ -273,7 +273,7 @@ def test(wkenv:Environment, intentions, argv=[], rebuild=1, lanes=4):
 	else:
 		explicit = []
 		for fpathstr in argv[:1]:
-			fpath = root.types.factor@fpathstr
+			fpath = lsf.types.factor@fpathstr
 			try:
 				explicit.append(wkenv.work_project_context.split(fpath)[1].identifier)
 			except LookupError:

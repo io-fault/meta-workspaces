@@ -8,15 +8,14 @@
 import typing
 
 from fault.system import files
-from fault.project.root import Product, Project, Context
-from fault.project.types import factor
+from fault.project import system as lsf
 
 class Support(object):
 	"""
 	# Support directory interface providing access to Construction Contexts and integration tools.
 	"""
 
-	def __init__(self, route:files.Path, Context=Context):
+	def __init__(self, route:files.Path, Context=lsf.Context):
 		self.route = route
 		self.tool_context = Context()
 		self.tool_index = None
@@ -39,12 +38,12 @@ class Environment(object):
 	# A sole product referring to the subject projects and a workspace &Support directory.
 	"""
 
-	work_project_context: Context = None
-	work_product_index: Product = None
+	work_project_context: lsf.Context = None
+	work_product_index: lsf.Product = None
 	work_product_route: files.Path = None
 	work_space_support: Support = None
 
-	def __init__(self, works:Support, product:files.Path, Context=Context):
+	def __init__(self, works:Support, product:files.Path, Context=lsf.Context):
 		self.work_project_context = Context() # Subject/Target Set
 		self.work_space_support = works
 		self.work_product_route = product
@@ -67,7 +66,7 @@ class Environment(object):
 		"""
 		return len(self.work_project_context.instance_cache)
 
-	def iterprojects(self) -> Project:
+	def iterprojects(self) -> lsf.Project:
 		"""
 		# Iterate over all focused subject projects.
 		"""
@@ -75,21 +74,21 @@ class Environment(object):
 
 	def load(self):
 		"""
-		# Initialize the project &Context and recognize the &Product index.
+		# Initialize the project &lsf.Context and recognize the &lsf.Product index.
 		"""
 		# Single product context.
 		self.work_product_index = self.work_project_context.connect(self.work_product_route)
 		self.work_project_context.load()
 		self.work_project_context.configure()
 
-	def select(self, project:str) -> Project:
+	def select(self, project:str) -> lsf.Project:
 		"""
-		# Get the &Project instance for the given &project path from the environment's project context.
+		# Get the &lsf.Project instance for the given &project path from the environment's project context.
 		"""
 		pj = None
 		pd = self.work_product_index
 
-		for pj in pd.select(factor@project):
+		for pj in pd.select(lsf.types.factor@project):
 			break
 		else:
 			raise LookupError("no such project in workspace environment")
