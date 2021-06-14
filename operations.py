@@ -46,14 +46,9 @@ def status(wkenv:Environment):
 
 # Initialize workspace environment and project index.
 def initialize(wkenv:Environment, clear=False):
-	r = wkenv.work_space_support.route
-	if r.fs_type() != 'void':
-		raise Exception("Workspace path already exists: " + str(r))
-
-	from . import setup
-	setup.directories(r)
-
-	return "workspace context initialized: " + str(r) + "\n"
+	from . import initialization
+	initialization.root(wkenv)
+	return "workspace context initialized\n"
 
 # Launch EDITOR for resolved sources.
 def edit(wkenv:Environment, factors=[], project:str=None):
@@ -96,7 +91,7 @@ def _build(wkenv, command, intention, argv, ident):
 	env, exepath, xargv = dispatch('factors-cc')
 
 	cache = wkenv.build_cache
-	ccs = wkenv.work_space_support.ccset(intention)
+	ccs = wkenv.work_space_tooling.ccset(intention)
 	pj = wkenv.work_project_context.project(ident)
 
 	for ccontext in ccs:
@@ -178,7 +173,7 @@ def build(wkenv:Environment, intentions, argv=[], rebuild=0):
 # Execute workspace subject factor.
 def execute(wkenv:Environment, argv=[]):
 	wkenv.load()
-	works = wkenv.work_space_support
+	works = wkenv.work_space_tooling
 	works.load()
 
 	str(wkenv.work_product_route)

@@ -10,7 +10,7 @@ import typing
 from fault.system import files
 from fault.project import system as lsf
 
-class Support(object):
+class Tooling(object):
 	"""
 	# Support directory interface providing access to Construction Contexts and integration tools.
 	"""
@@ -35,17 +35,17 @@ class Support(object):
 
 class Environment(object):
 	"""
-	# A sole product referring to the subject projects and a workspace &Support directory.
+	# A sole product referring to the subject projects and a &Tooling instance.
 	"""
 
 	work_project_context: lsf.Context = None
 	work_product_index: lsf.Product = None
 	work_product_route: files.Path = None
-	work_space_support: Support = None
+	work_space_tooling: Tooling = None
 
-	def __init__(self, works:Support, product:files.Path, Context=lsf.Context):
-		self.work_project_context = Context() # Subject/Target Set
-		self.work_space_support = works
+	def __init__(self, works:Tooling, product:files.Path):
+		self.work_project_context = lsf.Context() # Subject/Target Set
+		self.work_space_tooling = works
 		self.work_product_route = product
 
 	@property
@@ -53,11 +53,11 @@ class Environment(object):
 		"""
 		# Whether the workspace context is contained in the subject product directory.
 		"""
-		return self.work_space_support.route.container == self.work_product_route
+		return self.work_space_tooling.route.container == self.work_product_route
 
 	@property
 	def build_cache(self) -> files.Path:
-		return self.work_space_support.route / 'cache'
+		return self.work_space_tooling.route / 'cache'
 
 	@property
 	def project_count(self) -> int:

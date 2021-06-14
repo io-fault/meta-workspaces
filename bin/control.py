@@ -118,7 +118,7 @@ def main(inv:process.Invocation) -> process.Exit:
 	route = files.pwd()/WORKSPACE
 	product = route.container
 
-	works = system.Support(route)
+	works = system.Tooling(route)
 	wkenv = system.Environment(works, product)
 
 	os.environ['PRODUCT'] = str(product)
