@@ -45,10 +45,15 @@ def status(wkenv:Environment):
 	return NoSummary
 
 # Initialize workspace environment and project index.
-def initialize(wkenv:Environment, clear=False):
+def initialize(wkenv:Environment, intentions, argv=[], relevel=0):
 	from . import initialization
-	initialization.root(wkenv)
-	return "workspace context initialized\n"
+
+	if initialization.root(wkenv, intentions, relevel) >= 0:
+		summary = "workspace context initialized\n"
+	else:
+		summary = "workspace directory already exists\n"
+
+	return summary
 
 # Launch EDITOR for resolved sources.
 def edit(wkenv:Environment, factors=[], project:str=None):
@@ -126,7 +131,7 @@ class SQueue(object):
 	def status(self):
 		return (self.count - len(self.items), self.count)
 
-def build(wkenv:Environment, intentions, argv=[], rebuild=0):
+def build(wkenv:Environment, intentions, argv=[], relevel=0):
 	from fault.time.sysclock import now
 	from fault.project import graph
 	from fault.transcript import execution
@@ -134,8 +139,8 @@ def build(wkenv:Environment, intentions, argv=[], rebuild=0):
 	from fault.transcript import integration
 	from fault.transcript import proctheme
 
-	if rebuild:
-		os.environ['FPI_REBUILD'] = str(rebuild)
+	if relevel:
+		os.environ['FPI_REBUILD'] = str(relevel)
 
 	wkenv.load()
 
@@ -244,7 +249,7 @@ def plan_test(wkenv:Environment, intention:str, argv, pcontext:lsf.Context, iden
 		yield ('Fates', dims, xid, None, ki)
 
 # Debug intention (default) test execution with interactive control. -g
-def test(wkenv:Environment, intentions, argv=[], rebuild=1, lanes=4):
+def test(wkenv:Environment, intentions, argv=[], relevel=1, lanes=4):
 	from fault.transcript import terminal
 	from fault.transcript import integration
 	from fault.transcript import fatetheme

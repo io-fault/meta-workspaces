@@ -16,13 +16,23 @@ WORKSPACE='.workspace'
 
 # Workspace specific; pdctl uses an explicit context set directory.
 intention_codes = {
-	'g': (+0, 'debug'),
+	'I': (+1, 'identity'),
 	'O': (+2, 'optimal'),
-	'C': (+3, 'coverage'),
-	'P': (+3, 'profile'),
-	'T': (-1, 'delineation'),
+	'o': (+3, 'portable'),
 
-	'A': '..', # All.
+	'g': (+4, 'debug'),
+	'U': (+5, 'auxilary'),
+	'Y': (+6, 'capture'),
+
+	'P': (+8, 'profile'),
+	'C': (+9, 'coverage'),
+
+	'T': (+17, 'delineation'),
+	'Z': (+18, 'analysis'),
+}
+
+intention_set = {
+	i[1]: code for code, i in intention_codes.items()
 }
 
 aliases = {
@@ -31,14 +41,33 @@ aliases = {
 	'init': 'initialize',
 }
 
-def intent(options, index=intention_codes):
-	for x in options:
-		intents = [index[i] for i in set(x[1:]).intersection(intention_codes)]
-		if intents:
-			intents.sort()
-			yield from (i[1] for i in intents)
+def intent(options, index=intention_codes, All='A', Except='a'):
+	bitop = 0 # 0 is whitelist, 1 is all, -1 is blacklist
+	identified = set()
 
-def rebuild(options):
+	for x in options:
+		optset = set(x[1:])
+		if All in optset:
+			identified = set(intention_codes.values())
+			bitop = 1
+			break
+		elif Except in optset:
+			bitop = -1
+
+		for i in optset.intersection(intention_codes):
+			identified.add(index[i])
+
+		if 'a' in optset:
+			bitop = -1
+
+	if bitop == -1:
+		# Blacklist
+		filtered = [x for x in intention_codes.values() if x not in identified]
+		identified = filtered
+
+	return [x[1] for x in sorted(identified)]
+
+def relevel(options):
 	re = 0
 	for x in options:
 		roffset = x.rfind('r')
@@ -62,11 +91,12 @@ def split(argv):
 	return argv, []
 
 parameters = {
-	'build': (lambda options, argv: {'intentions': intent(options), 'argv': argv, 'rebuild': rebuild(options)}),
+	'build': (lambda options, argv: {'intentions': intent(options), 'argv': argv, 'relevel': relevel(options)}),
 	'edit': (lambda options, argv: {'factors': argv}),
 }
 parameters['sources'] = parameters['edit']
 parameters['test'] = parameters['build']
+parameters['initialize'] = parameters['build']
 
 def main(inv:process.Invocation) -> process.Exit:
 	i = 0
@@ -112,7 +142,7 @@ def main(inv:process.Invocation) -> process.Exit:
 		command_kw = {}
 
 	if r_level:
-		command_kw['rebuild'] = r_level
+		command_kw['relevel'] = r_level
 
 	# Usually pwd case.
 	route = files.pwd()/WORKSPACE
