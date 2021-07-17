@@ -27,11 +27,11 @@ class Tooling(object):
 		self.tool_index = self.tool_context.connect(self.route/'tools')
 		self.tool_context.load()
 
-	def ccset(self, intention:str) -> typing.Iterator[files.Path]:
+	def ccset(self) -> typing.Iterator[files.Path]:
 		"""
 		# Resolve (construction) context set path for the given intention.
 		"""
-		return (self.route/'cc'/intention).fs_iterfiles(type='directory')
+		yield (self.route/'cc')
 
 class Environment(object):
 	"""

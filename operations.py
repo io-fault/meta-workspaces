@@ -86,12 +86,12 @@ def project_list(wkenv:Environment, type='project'):
 	return NoSummary
 
 # Build the product or a project set.
-def _build(wkenv, command, intention, argv, ident):
+def _build(wkenv, command, intentions, argv, ident):
 	from system.root.query import dispatch
 	env, exepath, xargv = dispatch('factors-cc')
 
 	cache = wkenv.build_cache
-	ccs = wkenv.work_space_tooling.ccset(intention)
+	ccs = wkenv.work_space_tooling.ccset()
 	pj = wkenv.work_project_context.project(ident)
 
 	for ccontext in ccs:
@@ -99,7 +99,8 @@ def _build(wkenv, command, intention, argv, ident):
 		xid = '/'.join(dims)
 
 		cmd = xargv + [
-			str(ccontext), str(cache),
+			str(ccontext), 'persistent', str(cache),
+			':'.join(intentions),
 			str(wkenv.work_product_route), str(pj.factor)
 		]
 		cmd.extend(argv[1:])
@@ -155,18 +156,17 @@ def build(wkenv:Environment, intentions, argv=[], rebuild=0):
 	build_reporter = integration.emitter(integration.factor_report, sys.stdout.write)
 	build_traps = execution.Traps.construct(eox=integration.select_failures, eop=build_reporter)
 
-	for intent in intentions:
-		monitors, summary = terminal.aggregate(control, proctheme, 4, width=180)
-		i = functools.partial(_build, wkenv, 'build', intent, argv)
+	monitors, summary = terminal.aggregate(control, proctheme, 4, width=180)
+	i = functools.partial(_build, wkenv, 'build', intentions, argv)
 
-		if explicit is not None:
-			q = SQueue(explicit)
-		else:
-			q = graph.Queue()
-			q.extend(wkenv.work_project_context)
+	if explicit is not None:
+		q = SQueue(explicit)
+	else:
+		q = graph.Queue()
+		q.extend(wkenv.work_project_context)
 
-		constants = ('build', intent)
-		execution.dispatch(build_traps, i, control, monitors, summary, "FPI", constants, q)
+	constants = ('build',)
+	execution.dispatch(build_traps, i, control, monitors, summary, "FPI", constants, q)
 
 	return NoSummary
 
