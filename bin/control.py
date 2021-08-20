@@ -149,6 +149,7 @@ def main(inv:process.Invocation) -> process.Exit:
 	works = system.Tooling(route)
 	wkenv = system.Environment(works, product)
 
+	os.environ['F_PRODUCT'] = str(route/'cc')
 	os.environ['PRODUCT'] = str(product)
 
 	status = Command(wkenv, Command=command_id, **command_kw)
