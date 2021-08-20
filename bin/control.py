@@ -26,9 +26,6 @@ intention_codes = {
 
 	'P': (+8, 'profile'),
 	'C': (+9, 'coverage'),
-
-	'T': (+17, 'delineation'),
-	'Z': (+18, 'analysis'),
 }
 
 intention_set = {
@@ -97,6 +94,7 @@ parameters = {
 parameters['sources'] = parameters['edit']
 parameters['test'] = parameters['build']
 parameters['initialize'] = parameters['build']
+parameters['delineate'] = parameters['build']
 
 def main(inv:process.Invocation) -> process.Exit:
 	i = 0
@@ -153,7 +151,7 @@ def main(inv:process.Invocation) -> process.Exit:
 
 	os.environ['PRODUCT'] = str(product)
 
-	status = Command(wkenv, **command_kw)
+	status = Command(wkenv, Command=command_id, **command_kw)
 	sys.stderr.write(status)
 
 	return inv.exit(0)

@@ -30,7 +30,7 @@ def srcindex(wkenv, factors):
 			if fp == fpath or fp.segment(fpath):
 				yield from fs
 
-def update(wkenv:Environment):
+def update(wkenv:Environment, Command=None):
 	wkenv.load()
 
 	pd = wkenv.work_product_index
@@ -39,13 +39,13 @@ def update(wkenv:Environment):
 	pd.store()
 	return ""
 
-def status(wkenv:Environment):
+def status(wkenv:Environment, Command=None):
 	wkenv.load()
 	sys.stderr.write(f"CONTEXT[cwd-connect]: {wkenv.work_product_route}\n")
 	return NoSummary
 
 # Initialize workspace environment and project index.
-def initialize(wkenv:Environment, intentions, argv=[], relevel=0):
+def initialize(wkenv:Environment, intentions, argv=[], relevel=0, Command=None):
 	from . import initialization
 
 	if initialization.root(wkenv, intentions, relevel) >= 0:
@@ -56,7 +56,7 @@ def initialize(wkenv:Environment, intentions, argv=[], relevel=0):
 	return summary
 
 # Launch EDITOR for resolved sources.
-def edit(wkenv:Environment, factors=[], project:str=None):
+def edit(wkenv:Environment, factors=[], project:str=None, Command=None):
 	system_command = os.environ['EDITOR']
 	if system_command[:1] != '/':
 		system_command, = query.executables(system_command) # EDITOR not in environment?
@@ -74,7 +74,7 @@ def edit(wkenv:Environment, factors=[], project:str=None):
 	os.execv(system_command, [system_command] + sources)
 
 # List sources.
-def sources(wkenv:Environment, factors=[], project:str=None):
+def sources(wkenv:Environment, factors=[], project:str=None, Command=None):
 	wkenv.load()
 
 	for f in srcindex(wkenv, factors):
@@ -91,7 +91,7 @@ def project_list(wkenv:Environment, type='project'):
 	return NoSummary
 
 # Build the product or a project set.
-def _build(wkenv, command, intentions, argv, ident):
+def _process(wkenv, command, intentions, argv, ident, form=''):
 	from system.root.query import dispatch
 	env, exepath, xargv = dispatch('factors-cc')
 
@@ -105,7 +105,7 @@ def _build(wkenv, command, intentions, argv, ident):
 
 		cmd = xargv + [
 			str(ccontext), 'persistent', str(cache),
-			':'.join(intentions),
+			form + '/' + ':'.join(intentions),
 			str(wkenv.work_product_route), str(pj.factor)
 		]
 		cmd.extend(argv[1:])
@@ -131,7 +131,7 @@ class SQueue(object):
 	def status(self):
 		return (self.count - len(self.items), self.count)
 
-def build(wkenv:Environment, intentions, argv=[], relevel=0):
+def process(wkenv:Environment, intentions, argv=[], relevel=0, Command=None):
 	from fault.time.sysclock import now
 	from fault.project import graph
 	from fault.transcript import execution
@@ -162,7 +162,12 @@ def build(wkenv:Environment, intentions, argv=[], relevel=0):
 	build_traps = execution.Traps.construct(eox=integration.select_failures, eop=build_reporter)
 
 	monitors, summary = terminal.aggregate(control, proctheme, 4, width=180)
-	i = functools.partial(_build, wkenv, 'build', intentions, argv)
+	if Command == 'delineate':
+		cform = 'delineated'
+	else:
+		cform = ''
+
+	i = functools.partial(_process, wkenv, Command, intentions, argv, form=cform)
 
 	if explicit is not None:
 		q = SQueue(explicit)
@@ -170,13 +175,15 @@ def build(wkenv:Environment, intentions, argv=[], relevel=0):
 		q = graph.Queue()
 		q.extend(wkenv.work_project_context)
 
-	constants = ('build',)
+	constants = (Command,)
 	execution.dispatch(build_traps, i, control, monitors, summary, "FPI", constants, q)
 
 	return NoSummary
+build = process
+delineate = process
 
 # Execute workspace subject factor.
-def execute(wkenv:Environment, argv=[]):
+def execute(wkenv:Environment, argv=[], Command=None):
 	wkenv.load()
 	works = wkenv.work_space_tooling
 	works.load()
@@ -249,7 +256,7 @@ def plan_test(wkenv:Environment, intention:str, argv, pcontext:lsf.Context, iden
 		yield ('Fates', dims, xid, None, ki)
 
 # Debug intention (default) test execution with interactive control. -g
-def test(wkenv:Environment, intentions, argv=[], relevel=1, lanes=4):
+def test(wkenv:Environment, intentions, argv=[], relevel=1, lanes=4, Command=None):
 	from fault.transcript import terminal
 	from fault.transcript import integration
 	from fault.transcript import fatetheme
