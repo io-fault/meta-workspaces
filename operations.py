@@ -30,7 +30,7 @@ def srcindex(wkenv, factors):
 			if fp == fpath or fp.segment(fpath):
 				yield from fs
 
-def update(wkenv:Environment, Command=None):
+def update(wkenv:Environment, config, command, *argv):
 	wkenv.load()
 
 	pd = wkenv.work_product_index
@@ -39,16 +39,16 @@ def update(wkenv:Environment, Command=None):
 	pd.store()
 	return ""
 
-def status(wkenv:Environment, Command=None):
+def status(wkenv:Environment, config, command):
 	wkenv.load()
 	sys.stderr.write(f"CONTEXT[cwd-connect]: {wkenv.work_product_route}\n")
 	return NoSummary
 
 # Initialize workspace environment and project index.
-def initialize(wkenv:Environment, intentions, argv=[], relevel=0, Command=None):
+def initialize(wkenv:Environment, config, command, *argv):
 	from . import initialization
 
-	if initialization.root(wkenv, intentions, relevel) >= 0:
+	if initialization.root(wkenv, config['intentions'], relevel) >= 0:
 		summary = "workspace context initialized\n"
 	else:
 		summary = "workspace directory already exists\n"
@@ -56,7 +56,7 @@ def initialize(wkenv:Environment, intentions, argv=[], relevel=0, Command=None):
 	return summary
 
 # Launch EDITOR for resolved sources.
-def edit(wkenv:Environment, factors=[], project:str=None, Command=None):
+def edit(wkenv:Environment, config, command, *argv):
 	system_command = os.environ['EDITOR']
 	if system_command[:1] != '/':
 		system_command, = query.executables(system_command) # EDITOR not in environment?
@@ -68,22 +68,22 @@ def edit(wkenv:Environment, factors=[], project:str=None, Command=None):
 	sources = [
 		x[l:] if x.startswith(pwd) else x
 		for x in
-		map(str, (y[1] for y in srcindex(wkenv, factors)))
+		map(str, (y[1] for y in srcindex(wkenv, argv[1:])))
 	]
 
 	os.execv(system_command, [system_command] + sources)
 
 # List sources.
-def sources(wkenv:Environment, factors=[], project:str=None, Command=None):
+def sources(wkenv:Environment, config, command, *argv):
 	wkenv.load()
 
-	for f in srcindex(wkenv, factors):
+	for f in srcindex(wkenv, argv[1:]):
 		sys.stdout.write(str(f) + '\n')
 
 	return NoSummary
 
 # List projects or contexts.
-def project_list(wkenv:Environment, type='project'):
+def project_list(wkenv:Environment, config, command, *argv):
 	wkenv.load()
 	ls = '\n'.join(str(pj.factor) for pj in wkenv.iterprojects())
 	sys.stdout.write(ls + '\n')
@@ -131,13 +131,16 @@ class SQueue(object):
 	def status(self):
 		return (self.count - len(self.items), self.count)
 
-def process(wkenv:Environment, intentions, argv=[], relevel=0, Command=None):
+def process(wkenv:Environment, config, command, *argv):
 	from fault.time.sysclock import now
 	from fault.project import graph
 	from fault.transcript import execution
 	from fault.transcript import terminal
 	from fault.transcript import integration
 	from fault.transcript import proctheme
+	intentions = config['intentions']
+	relevel = config['relevel']
+	lanes = int(config['processing-lanes'])
 
 	if relevel:
 		os.environ['FPI_REBUILD'] = str(relevel)
@@ -161,13 +164,13 @@ def process(wkenv:Environment, intentions, argv=[], relevel=0, Command=None):
 	build_reporter = integration.emitter(integration.factor_report, sys.stdout.write)
 	build_traps = execution.Traps.construct(eox=integration.select_failures, eop=build_reporter)
 
-	monitors, summary = terminal.aggregate(control, proctheme, 4, width=180)
-	if Command == 'delineate':
+	monitors, summary = terminal.aggregate(control, proctheme, lanes, width=180)
+	if command == 'delineate':
 		cform = 'delineated'
 	else:
 		cform = ''
 
-	i = functools.partial(_process, wkenv, Command, intentions, argv, form=cform)
+	i = functools.partial(_process, wkenv, command, intentions, argv, form=cform)
 
 	if explicit is not None:
 		q = SQueue(explicit)
@@ -175,7 +178,7 @@ def process(wkenv:Environment, intentions, argv=[], relevel=0, Command=None):
 		q = graph.Queue()
 		q.extend(wkenv.work_project_context)
 
-	constants = (Command,)
+	constants = (command,)
 	execution.dispatch(build_traps, i, control, monitors, summary, "FPI", constants, q)
 
 	return NoSummary
@@ -183,7 +186,7 @@ build = process
 delineate = process
 
 # Execute workspace subject factor.
-def execute(wkenv:Environment, argv=[], Command=None):
+def execute(wkenv:Environment, config, command, *argv):
 	wkenv.load()
 	works = wkenv.work_space_tooling
 	works.load()
@@ -256,12 +259,15 @@ def plan_test(wkenv:Environment, intention:str, argv, pcontext:lsf.Context, iden
 		yield ('Fates', dims, xid, None, ki)
 
 # Debug intention (default) test execution with interactive control. -g
-def test(wkenv:Environment, intentions, argv=[], relevel=1, lanes=4, Command=None):
+def test(wkenv:Environment, config, command, *argv):
 	from fault.transcript import terminal
 	from fault.transcript import integration
 	from fault.transcript import fatetheme
 	from fault.transcript import execution
 	from fault.project import graph
+	intentions = config['intentions']
+	relevel = config['relevel']
+	lanes = int(config['processing-lanes'])
 
 	# Project Context
 	wkenv.load()
@@ -288,7 +294,6 @@ def test(wkenv:Environment, intentions, argv=[], relevel=1, lanes=4, Command=Non
 					pj.identifier for pj in wkenv.work_project_context.iterprojects()
 					if pj.factor.segment(fpath)
 				)
-		del argv[:1]
 
 	for intent in intentions:
 		os.environ['INTENTION'] = intent
@@ -300,7 +305,7 @@ def test(wkenv:Environment, intentions, argv=[], relevel=1, lanes=4, Command=Non
 			q = graph.Queue()
 			q.extend(wkenv.work_project_context)
 
-		local_plan = tools.partial(plan_test, wkenv, intent, argv, wkenv.work_project_context)
+		local_plan = tools.partial(plan_test, wkenv, intent, argv[1:], wkenv.work_project_context)
 
 		sys.stdout.write("[-> Testing %r build. (integrate/test)]\n" %(intent,))
 		constants = ('test', intent)
@@ -324,7 +329,7 @@ def clean(intentions=[],):
 	"""
 	return "No effect."
 
-def help(wkenv:Environment, argv=[]):
+def help(wkenv:Environment, config, command, *argv):
 	"""
 	# Display help for command list and command information.
 	"""
