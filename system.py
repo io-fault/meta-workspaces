@@ -27,12 +27,6 @@ class Tooling(object):
 		self.tool_index = self.tool_context.connect(self.route/'tools')
 		self.tool_context.load()
 
-	def ccset(self) -> typing.Iterator[files.Path]:
-		"""
-		# Resolve (construction) context set path for the given intention.
-		"""
-		yield (self.route/'cc')
-
 class Environment(object):
 	"""
 	# A sole product referring to the subject projects and a &Tooling instance.
@@ -42,11 +36,13 @@ class Environment(object):
 	work_product_index: lsf.Product = None
 	work_product_route: files.Path = None
 	work_space_tooling: Tooling = None
+	work_construction_context: files.Path = None
 
-	def __init__(self, works:Tooling, product:files.Path):
+	def __init__(self, works:Tooling, product:files.Path, cctx:files.Path):
 		self.work_project_context = lsf.Context() # Subject/Target Set
 		self.work_space_tooling = works
 		self.work_product_route = product
+		self.work_construction_context = cctx
 
 	@property
 	def detached(self) -> bool:

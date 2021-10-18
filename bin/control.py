@@ -31,6 +31,7 @@ root_restricted = {
 
 root_required = {
 	'-i': ('set-add', 'intentions'),
+	'-x': ('field-replace', 'construction-context'),
 	'-W': ('field-replace', 'workspace-directory'),
 	'-D': ('field-replace', 'product-directory'),
 	'-L': ('field-replace', 'processing-lanes'),
@@ -44,6 +45,7 @@ def main(inv:process.Invocation) -> process.Exit:
 		'intentions': set(),
 		'relevel': 0,
 		'processing-lanes': 4,
+		'construction-context': None,
 		'workspace-directory': None,
 		'product-directory': None,
 	}
@@ -72,10 +74,17 @@ def main(inv:process.Invocation) -> process.Exit:
 		route = product/WORKSPACE
 	else:
 		route = files.Path.from_path(config['workspace-directory'])
-	os.environ['F_PRODUCT'] = str(route/'cc')
+
+	# Override .workspace/cc default? Option consistent with pdctl.
+	if config['construction-context'] is None:
+		cctx = (route/'cc')
+	else:
+		cctx = files.Path.from_path(config['construction-context'])
+
+	os.environ['F_PRODUCT'] = str(cctx)
 
 	works = system.Tooling(route)
-	wkenv = system.Environment(works, product)
+	wkenv = system.Environment(works, product, cctx)
 	status = Command(wkenv, config, *remainder)
 	sys.stderr.write(status)
 

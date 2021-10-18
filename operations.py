@@ -96,7 +96,7 @@ def _process(wkenv, command, intentions, argv, ident, form=''):
 	env, exepath, xargv = dispatch('factors-cc')
 
 	cache = wkenv.build_cache
-	ccs = wkenv.work_space_tooling.ccset()
+	ccs = [wkenv.work_construction_context]
 	pj = wkenv.work_project_context.project(ident)
 
 	for ccontext in ccs:
