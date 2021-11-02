@@ -65,7 +65,7 @@ def main(inv:process.Invocation) -> process.Exit:
 		return inv.exit(3)
 
 	if config['product-directory'] is None:
-		product = files.pwd()
+		product = process.fs_pwd()
 	else:
 		product = files.Path.from_path(config['product-directory'])
 	os.environ['PRODUCT'] = str(product)
