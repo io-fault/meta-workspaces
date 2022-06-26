@@ -34,8 +34,10 @@ restricted = {
 
 required = {
 	'-i': ('set-add', 'intentions'),
-	'-x': ('field-replace', 'construction-context'),
 	'-W': ('field-replace', 'workspace-directory'),
+
+	'-x': ('field-replace', 'execution-context'),
+	'-X': ('field-replace', 'construction-context'),
 	'-D': ('field-replace', 'product-directory'),
 	'-L': ('field-replace', 'processing-lanes'),
 }
@@ -88,6 +90,7 @@ def main(inv:process.Invocation) -> process.Exit:
 		'relevel': '0',
 		'processing-lanes': '4',
 		'construction-context': None,
+		'execution-context': None,
 		'workspace-directory': None,
 		'product-directory': None,
 	}
@@ -123,14 +126,20 @@ def main(inv:process.Invocation) -> process.Exit:
 
 	# Override .workspace/cc default? Option consistent with pdctl.
 	if config['construction-context'] is None:
-		cctx = (route/'cc')
+		cc = (route/'cc')
 	else:
-		cctx = files.Path.from_path(config['construction-context'])
+		cc = files.Path.from_path(config['construction-context'])
 
-	os.environ['F_PRODUCT'] = str(cctx)
+	# Override .workspace/xc default? Option consistent with pdctl.
+	if config['execution-context'] is None:
+		xc = (route/'xc')
+	else:
+		xc = files.Path.from_path(config['execution-context'])
 
-	works = system.Tooling(cctx/'tools')
-	wkenv = system.Environment(works, product, cctx)
+	os.environ['F_PRODUCT'] = str(cc)
+
+	works = system.Tooling(cc/'tools')
+	wkenv = system.Environment(works, product, cc, xc)
 
 	status = opcall(wkenv, *[config.get(x) for x in opconfig])
 	return inv.exit(0)

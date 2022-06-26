@@ -37,12 +37,14 @@ class Environment(object):
 	work_product_route: files.Path = None
 	work_space_tooling: Tooling = None
 	work_construction_context: files.Path = None
+	work_execution_context: files.Path = None
 
-	def __init__(self, works:Tooling, product:files.Path, cctx:files.Path):
+	def __init__(self, works:Tooling, product:files.Path, cc:files.Path, xc:files.Path):
 		self.work_project_context = lsf.Context() # Subject/Target Set
 		self.work_space_tooling = works
 		self.work_product_route = product
-		self.work_construction_context = cctx
+		self.work_construction_context = cc
+		self.work_execution_context = xc
 
 	@property
 	def detached(self) -> bool:

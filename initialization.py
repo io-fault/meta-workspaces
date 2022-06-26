@@ -5,6 +5,7 @@ import os
 
 directory_paths = [
 	'cc', # Construction Context
+	'xc', # Execution Context
 	'cache', # Build cache.
 	'captures',
 ]
