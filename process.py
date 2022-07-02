@@ -12,8 +12,9 @@ from fault.project import system as lsf
 from fault.system import files
 
 from fault.transcript import terminal
-from fault.transcript import integration
 from fault.transcript import execution
+from fault.transcript.io import Log
+from fault.transcript.metrics import Procedure
 from fault.project import graph
 
 from . import system
@@ -41,8 +42,7 @@ def _process(wkenv, command, intentions, argv, ident, form=''):
 	pj = wkenv.work_project_context.project(ident)
 
 	for ccontext in ccs:
-		dims = (str(pj.factor),)
-		xid = '/'.join(dims)
+		fpath = str(pj.factor)
 
 		cmd = xargv + [
 			str(ccontext), 'persistent', str(cache),
@@ -51,7 +51,7 @@ def _process(wkenv, command, intentions, argv, ident, form=''):
 		]
 		cmd.extend(argv[1:])
 		ki = KInvocation(cmd[0], cmd)
-		yield ('FPI', dims, xid, None, ki)
+		yield (fpath, (), None, ki)
 
 class SQueue(object):
 	def __init__(self, sequence):
@@ -73,7 +73,7 @@ class SQueue(object):
 		return (self.count - len(self.items), self.count)
 
 def build(wkenv:system.Environment,
-		command:str,
+		command:str, # build or delineate
 		intentions:Set[str],
 		relevel,
 		lanes,
@@ -100,9 +100,6 @@ def build(wkenv:system.Environment,
 	control = terminal.setup()
 	control.configure(limit+1)
 
-	build_reporter = integration.emitter(integration.factor_report, sys.stdout.write)
-	build_traps = execution.Traps.construct(eox=integration.select_failures, eop=build_reporter)
-
 	monitors, summary = terminal.aggregate(control, proctheme, limit, width=180)
 	if command == 'delineate':
 		cform = 'delineated'
@@ -117,8 +114,14 @@ def build(wkenv:system.Environment,
 		q = graph.Queue()
 		q.extend(wkenv.work_project_context)
 
-	constants = (command,)
-	execution.dispatch(build_traps, i, control, monitors, summary, "FPI", constants, q)
+	meta = Log.stderr()
+	log = Log.stdout()
+	xid = 'build'
+	log.xact_open(xid, "FPI: %s." %(command,), {})
+	try:
+		execution.dispatch(meta, log, i, control, monitors, summary, "FPI", q,)
+	finally:
+		log.xact_close(xid, summary.synopsis(), {})
 
 def check_keywords(keywords, name, Table=str.maketrans('_.-', '   ')):
 	name_str = str(name)
@@ -172,18 +175,20 @@ def plan_test(wkenv:system.Environment, intention:str, argv, pcontext:lsf.Contex
 		if not fp.identifier.startswith('test_') or not kwcheck(fp):
 			continue
 
+		pj_fp = str(project)
+		test_fp = str(fp)
+		xid = '/'.join((pj_fp, test_fp))
+
 		cmd = xargv + [
 			'fault.test.bin.coherence',
-			str(project), str(fp)
+			pj_fp, test_fp
 		]
 		env = dict(os.environ)
 		env.update(exeenv)
 		env['F_PROJECT'] = str(project)
 		ki = KInvocation(cmd[0], cmd, environ=env)
 
-		dims = (str(project), str(fp))
-		xid = '/'.join(dims)
-		yield ('Fates', dims, xid, None, ki)
+		yield (pj_fp, (test_fp,), xid, ki)
 
 def test(
 		wkenv:system.Environment,
@@ -196,6 +201,7 @@ def test(
 	from fault.transcript import fatetheme
 
 	# Project Context
+	metrics = Procedure.create()
 	lanes = int(lanes)
 	wkenv.load()
 	os.environ['F_PRODUCT'] = str(wkenv.work_product_route)
@@ -204,9 +210,6 @@ def test(
 	control.configure(lanes+1)
 	monitors, summary = terminal.aggregate(control, fatetheme, lanes, width=160)
 	status = (control, monitors, summary)
-
-	test_reporter = integration.emitter(integration.test_report, sys.stdout.write)
-	test_traps = execution.Traps.construct(eop=test_reporter)
 
 	if not selection or '.' in selection:
 		explicit = None
@@ -222,22 +225,26 @@ def test(
 					if pj.factor.segment(fpath)
 				)
 
+	meta = Log.stderr()
+	log = Log.stdout()
+
 	for intent in intentions:
-		os.environ['INTENTION'] = intent
-
-		# The queues have state, so they must be rebuilt for each intention.
-		if explicit is not None:
-			q = SQueue(explicit)
-		else:
-			q = graph.Queue()
-			q.extend(wkenv.work_project_context)
-
-		local_plan = tools.partial(plan_test, wkenv, intent, selection[1:], wkenv.work_project_context)
-
-		sys.stdout.write("[-> Testing %r build. (integrate/test)]\n" %(intent,))
-		constants = ('test', intent)
+		xid = 'test/' + intent
+		log.xact_open(xid, "Testing %s." %(intent,), {})
 		try:
-			execution.dispatch(test_traps, local_plan, control, monitors, summary, "Fates", constants, q)
+			os.environ['INTENTION'] = intent
+
+			# The queues have state, so they must be rebuilt for each intention.
+			if explicit is not None:
+				q = SQueue(explicit)
+			else:
+				q = graph.Queue()
+				q.extend(wkenv.work_project_context)
+
+			i = tools.partial(plan_test, wkenv, intent, selection[1:], wkenv.work_project_context)
+
+			execution.dispatch(meta, log, i, control, monitors, summary, "Fates", q,)
+			metrics += summary.profile()[-1]
 		finally:
-			summary.set_field_read_type('usage', 'overall')
-			sys.stdout.write("[<- %s (integrate/test)]\n" %(summary.synopsis(),))
+			summary.title('Fates', intent)
+			log.xact_close(xid, summary.synopsis(), {})
